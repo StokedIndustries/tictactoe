@@ -216,14 +216,13 @@
 	var Player = function(data) {
 		var self = $dd.model({
 			id: 1,
-			name: 'Human Player',
 			kind: 'human', // bet you're wondering why we need this. you'll see soon enough as you trace your way through the game functions.
 			icon: 'X',
 			moves: 0
 		});
 		
 		self.notify = function() {
-			console.log(self.name + ' turn! Make a move.');
+			console.log('Player ' + self.id + ' turn! Make a move.');
 			
 			UI.switchView('turn', self);
 		};
@@ -244,13 +243,12 @@
 	var AiPlayer = function(data) {
 		var self = Player({
 			id: 2,
-			name: 'AI Player',
 			kind: 'ai',
 			icon: 'O'
 		});
 		
 		self.notify = function() {
-			console.log(self.name + ' turn! Make a move.');
+			console.log('Player ' + self.id + ' turn! Make a move.');
 			
 			UI.switchView('turn', self);
 			
@@ -465,11 +463,7 @@
 	 *	Let's load it all up!
 	 */
 	$dd.init(function() {
-		
 		var game = Game();
-	
-		game.p1 = Player();
-		game.p2 = AiPlayer();
 	
 		/*	register our game with the ioc
 			so we can access it from anywhere */
@@ -479,6 +473,32 @@
 		
 		// Listen for game start click
 		$dd.dom('#start').on('click', function(evt) {
+			// let's find out which player is an AI
+			var p1, p2;
+			$dd.dom('input[name="p2-type"]').each(function(p) {
+				if ( p[0].checked ) {
+					p2 = p[0].value;
+				}
+			});
+			$dd.dom('input[name="p1-type"]').each(function(p) {
+				if ( p[0].checked ) {
+					p1 = p[0].value;
+				}
+			});
+			
+			console.log(p1, p2);
+			
+			if ( p1 === 'ai' ) {
+				game.p1 = AiPlayer();
+			} else {
+				game.p1 = Player();
+			}
+			if ( p2 === 'ai' ) {
+				game.p2 = AiPlayer();
+			} else {
+				game.p2 = Player();
+			}
+			
 			/*  If this is AI vs AI we need to give Player 1
 				a starting position. Let's randomize it too. */
 			if ( game.p1.kind === 'ai' ) {
