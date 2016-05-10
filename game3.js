@@ -12,7 +12,6 @@
 		};
 		
 		self.doMove = function(pos, player) {
-			console.log('game doMove', pos, player.name);
 			self.state.doMove(pos, player);
 			
 			var winner = self.state.checkForWinner(),
@@ -58,6 +57,8 @@
 	var GameState = function(data) {
 		var self = $dd.model({
 			turn: 1,
+			p1_moves: 0,
+			p2_moves: 0,
 			board: [0,0,0,0,0,0,0,0,0]
 		});
 		
@@ -67,6 +68,12 @@
 		
 		self.doMove = function(pos, player) {
 			self.board[ pos ] = player;
+			
+			if ( player.id === 1 ) {
+				self.p1_moves++;
+			} else {
+				self.p2_moves++;
+			}
 		};
 		
 		self.getMoves = function() {
@@ -82,7 +89,30 @@
 		};
 		
 		self.getScore = function() {
+			var winner = self.checkForWinner(),
+				full = self.isFull(),
+				obj = {
+					winner: false,
+					score: 0
+				};
 			
+			if ( winner ) {
+				obj.winner = winner;
+				
+				// here's the evil part that totally bludgeons the human. the AI always wins or ties!
+				if ( winner.kind === 'human' ) {
+					var moves = winner.id === 1 ? self.p2_moves : self.p1_moves;
+					obj.score = 10 - moves;
+				} else {
+					var moves = winner.id === 1 ? self.p1_moves : self.p2_moves;
+					obj.score = -10 + moves;
+				}
+			} else if ( full ) {
+				obj.winner = 'tie';
+				obj.score = 0;
+			}
+			
+			return obj;
 		};
 		
 		self.checkForWinner = function() {
@@ -107,7 +137,7 @@
 				}
 			}
 			
-			return 0;
+			return false;
 		};
 		
 		self.isFull = function() {
@@ -123,11 +153,7 @@
 		};
 		
 		self.isFinished = function() {
-			if ( self.isFull() ) {
-				return true;
-			}
-			
-			if ( self.checkForWinner() ) {
+			if ( self.isFull() || self.checkForWinner() ) {
 				return true;
 			}
 			
@@ -150,8 +176,9 @@
 		var self = $dd.model({
 			id: 1,
 			name: 'Human Player',
-			kind: 'human',
-			icon: 'X'
+			kind: 'human', // bet you're wondering why we need this. you'll see soon enough as you trace your way through the game functions.
+			icon: 'X',
+			moves: 0
 		});
 		
 		self.notify = function() {
@@ -159,6 +186,7 @@
 		};
 		
 		self.doMove = function(pos) {
+			self.moves++;
 			$dd.ioc.get('game').doMove(pos, self);
 		};
 		
@@ -196,6 +224,7 @@
 			
 			// then get available moves and feed them to the AI
 			var possible_moves = state.getMoves().map(function(pos) {
+				console.log('thinking...');
 				
 				// clone the game state so we can work with it
 				var nstate = makeNewState(state, pos);
@@ -254,7 +283,8 @@
 		function minimaxValue(state) {
 			// return max score if game's finished
 			if ( state.isFinished() ) {
-				return 1000;
+				//console.log('finished, score: ' + state.getScore().score);
+				return state.getScore().score;
 			}
 			
 			// if it's not our turn, we want to minimize
