@@ -8,19 +8,24 @@
 		var self = {
 			p1: null,
 			p2: null,
-			state: GameState()
+			state: GameState(),
+			status: 'not started'
 		};
 		
 		self.doMove = function(pos, player) {
+			
 			self.state.doMove(pos, player);
+			UI.insertAt(pos, player.icon);
 			
 			var winner = self.state.checkForWinner(),
-				full = self.state.isFull();
+			full = self.state.isFull();
 				
 			if ( winner ) {
 				console.log(winner.name + ' won!');
+				UI.switchView('won', winner);
 			} else if ( full ) {
 				console.log('Its a draw!');
+				UI.switchView('draw');
 			} else {
 				console.log('advancing state');
 				console.table(self.state.board);
@@ -43,7 +48,25 @@
 		self.start = function() {
 			console.log('starting game!');
 			
+			// make sure we're clean
+			UI.resetBoard();
+			self.state = GameState();
+			
+			// notify player 1
 			self.p1.notify();
+		};
+		
+		self.registerClick = function(index) {
+			index = parseInt(index);
+			
+			// goof proof
+			if ( !self.state.isFinished() || self.status !== 'not started' ) {
+				// occupado?
+				if ( self.state.board[index] === 0 ) {
+					var player = self.state.turn === 1 ? self.p1 : self.p2;
+					player.doMove(index);
+				}
+			}
 		};
 		
 		return self;
@@ -55,12 +78,20 @@
 	 *	Factory for our game states. It defaults to empty board and Player 1 turn.
 	 */
 	var GameState = function(data) {
-		var self = $dd.model({
+		var self = {
 			turn: 1,
 			p1_moves: 0,
 			p2_moves: 0,
-			board: [0,0,0,0,0,0,0,0,0]
-		});
+			board: [0,0,0,0,0,0,0,0,0],
+			status: 'running'
+		};
+		
+		if ( data ) {
+			self.turn = data.turn;
+			self.p1_moves = data.p1_moves;
+			self.p2_moves = data.p2_moves;
+			self.board = data.board;
+		}
 		
 		self.advance = function() {
 			self.turn = self.turn === 1 ? 2 : 1;
@@ -95,12 +126,11 @@
 					winner: false,
 					score: 0
 				};
-			
+		
 			if ( winner ) {
 				obj.winner = winner;
 				
-				// here's the evil part that totally bludgeons the human. the AI always wins or ties!
-				if ( winner.kind === 'human' ) {
+				if ( winner.id != self.turn ) {
 					var moves = winner.id === 1 ? self.p2_moves : self.p1_moves;
 					obj.score = 10 - moves;
 				} else {
@@ -111,7 +141,7 @@
 				obj.winner = 'tie';
 				obj.score = 0;
 			}
-			
+		
 			return obj;
 		};
 		
@@ -153,7 +183,7 @@
 		};
 		
 		self.isFinished = function() {
-			if ( self.isFull() || self.checkForWinner() ) {
+			if ( self.checkForWinner() || self.isFull() ) {
 				return true;
 			}
 			
@@ -161,10 +191,21 @@
 		};
 		
 		self.clone = function() {
-			return GameState( self.out() );
+			var nstate = {
+				turn: self.turn,
+				p1_moves: self.p1_moves,
+				p2_moves: self.p2_moves,
+				board: []
+			}, ni;
+			
+			for ( ni = 0; ni < self.board.length; ni++ ) {
+				nstate.board[ni] = self.board[ni];
+			}
+			
+			return GameState(nstate);
 		};
 		
-		return self.fill(data);
+		return self;
 	};
 	
 	/**
@@ -175,14 +216,15 @@
 	var Player = function(data) {
 		var self = $dd.model({
 			id: 1,
-			name: 'Human Player',
 			kind: 'human', // bet you're wondering why we need this. you'll see soon enough as you trace your way through the game functions.
 			icon: 'X',
 			moves: 0
 		});
 		
 		self.notify = function() {
-			console.log(self.name + ' turn! Make a move.');
+			console.log('Player ' + self.id + ' turn! Make a move.');
+			
+			UI.switchView('turn', self);
 		};
 		
 		self.doMove = function(pos) {
@@ -201,21 +243,24 @@
 	var AiPlayer = function(data) {
 		var self = Player({
 			id: 2,
-			name: 'AI Player',
 			kind: 'ai',
 			icon: 'O'
 		});
 		
 		self.notify = function() {
-			console.log(self.name + ' turn! Make a move.');
+			console.log('Player ' + self.id + ' turn! Make a move.');
+			
+			UI.switchView('turn', self);
 			
 			// ok let's find our best move!
 			var move = getBestMove();
 			
 			console.log('found best move! applying now', move);
 			
-			// then apply it
-			self.doMove(move.pos, self);
+			// then apply it. add a bit of a delay so the human doesn't feel so sluggish ;)
+			setTimeout(function() {
+				self.doMove(move.pos, self);
+			}, 2000);
 		};
 		
 		function getBestMove() {
@@ -224,11 +269,8 @@
 			
 			// then get available moves and feed them to the AI
 			var possible_moves = state.getMoves().map(function(pos) {
-				console.log('thinking...');
-				
 				// clone the game state so we can work with it
 				var nstate = makeNewState(state, pos);
-				
 				// calculate the Minimax score of this new state
 				var score = minimaxValue( nstate );
 				
@@ -239,11 +281,20 @@
 				};
 			});
 			
+			console.log(possible_moves);
+			possible_moves = sortMoves(possible_moves, state);
+			
+			// pick the first one and return it.
+			return possible_moves[0];
+		};
+		
+		function sortMoves(moves, state) {
 			// now let's sort the best possible moves by their scores. we'll use the top score.
 			// if it's our (the AI) turn, we wanna maximize our score.
 			// if it's the other player (also might be AI), we wanna minimize their score.
 			if ( state.turn === self.id ) {
-				possible_moves.sort( function(a, b) {
+				console.log('sorting desc');
+				moves.sort( function(a, b) {
 					switch(true) {
 						case ( a.score > b.score ):
 							return -1;
@@ -259,7 +310,8 @@
 					}
 				} );
 			} else {
-				possible_moves.sort( function(a, b) {
+				console.log('sorting asc');
+				moves.sort( function(a, b) {
 					switch(true) {
 						case ( a.score < b.score ):
 							return -1;
@@ -276,14 +328,12 @@
 				} );
 			}
 			
-			// pick the first one and return it.
-			return possible_moves[0];
+			return moves;
 		};
 		
 		function minimaxValue(state) {
 			// return max score if game's finished
 			if ( state.isFinished() ) {
-				//console.log('finished, score: ' + state.getScore().score);
 				return state.getScore().score;
 			}
 			
@@ -295,7 +345,7 @@
 				score = 1000;
 			}
 			
-			// let's generate new states for the available moves
+			// let's generate new states from the available moves
 			var nstates = state.getMoves().map(function(pos) {
 				return makeNewState(state, pos);
 			});
@@ -305,7 +355,7 @@
 				// get minimax score. warning: this is a recursive beast
 				var nscore = minimaxValue(nstate);
 				
-				// if it's not our turn, we want to maximize the score
+				// we wanna maximize this time
 				if ( state.turn !== self.id ) {
 					if ( nscore > score ) {
 						score = nscore;
@@ -337,28 +387,131 @@
 	};
 	
 	/**
+	 *	UI
+	 *
+	 *	Providing a UI service to the game
+	 */
+	var UI = {
+		show_controls: true,
+		current_view: 'start',
+		
+		switchView: function(view, object) {
+			console.log('switchView', view, object);
+			
+			// fade out current view
+			//console.log('curr view', UI.current_view);
+			//$dd.dom('#' + UI.current_view).css({ display: 'none' });
+			$dd.dom('#start').css({ display: 'none' });
+			$dd.dom('.player-types').each(function(obj) {
+				obj.css({ display: 'none' });
+			});
+			$dd.dom('.player-turn').each(function(obj) {
+				obj.css({ display: 'none' });
+			});
+			
+			// set current view to new view
+			UI.current_view = view;
+			
+			switch(view) {
+				case 'start':
+					$dd.dom('#start').css({ display: 'block' });
+					break;
+					
+				case 'won':
+					$dd.dom('.p' + object.id + ' .player-turn').html('Winner!').css({ display: 'block' });
+					$dd.dom('#start').css({ display: 'block' });
+					break;
+					
+				case 'draw':
+					$dd.dom('.player-turn').each(function(obj) {
+						obj.html('Draw!').css({ display: 'block' });
+					});
+					break;
+					
+				case 'turn':
+					var turn = $dd.dom('.p' + object.id + ' .player-turn');
+					if ( object.kind === 'human' ) {
+						turn.html('It\'s your turn!');
+					} else {
+						turn.html('A.I. is thinking...');
+					}
+					turn.css({ display: 'block' });
+					break;
+			}
+		},
+		
+		insertAt: function(index, symbol) {
+			var cell = $dd.dom('.cell').get(index);
+			
+			cell.html(symbol);
+			cell.css({
+				color : symbol === 'X' ? 'green' : 'red'
+			});
+			cell.addClass('occupied');
+		},
+		
+		resetBoard: function() {
+			$dd.dom('.cell').each(function(cell) {
+				cell.html('').removeClass('occupied');
+			});
+		}
+	};
+	
+	/**
 	 *	Init Game
 	 *
 	 *	Let's load it all up!
 	 */
 	$dd.init(function() {
 		var game = Game();
-		
-		game.p1 = Player();
-		game.p2 = AiPlayer();
-		
+	
 		/*	register our game with the ioc
 			so we can access it from anywhere */
 		$dd.ioc.register('game', function() {
 			return game;
 		});
 		
-		/*  If this is AI vs AI we need to give Player 1
-			a starting position. Let's randomize it too. */
-		if ( game.p1.kind === 'ai' ) {
-			game.start( Math.floor( Math.random() * 8 ) );
-		} else {
-			game.start();
-		}
+		// Listen for game start click
+		$dd.dom('#start').on('click', function(evt) {
+			// let's find out which player is an AI
+			var p1, p2;
+			$dd.dom('input[name="p2-type"]').each(function(p) {
+				if ( p[0].checked ) {
+					p2 = p[0].value;
+				}
+			});
+			$dd.dom('input[name="p1-type"]').each(function(p) {
+				if ( p[0].checked ) {
+					p1 = p[0].value;
+				}
+			});
+			
+			console.log(p1, p2);
+			
+			if ( p1 === 'ai' ) {
+				game.p1 = AiPlayer();
+			} else {
+				game.p1 = Player();
+			}
+			if ( p2 === 'ai' ) {
+				game.p2 = AiPlayer();
+			} else {
+				game.p2 = Player();
+			}
+			
+			/*  If this is AI vs AI we need to give Player 1
+				a starting position. Let's randomize it too. */
+			if ( game.p1.kind === 'ai' ) {
+				game.start( Math.floor( Math.random() * 8 ) );
+			} else {
+				game.start();
+			}
+		});
+		
+		$dd.dom('.cell').each(function(cell) {
+			cell.on('click', function(evt) {
+				game.registerClick( cell[0].attributes['board-index'].value );
+			});
+		});
 	});
 })();
