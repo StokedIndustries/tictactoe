@@ -6,103 +6,65 @@
 	 */
 	var Game = function() {
 		var self = {
-			p1: false,
-			p2: false,
-			state: GameState({
-				cells: ['E', 'E', 'E',
-						'E', 'E', 'E',
-						'E', 'E', 'E'],
-				turn: 'X'
-			}),
-			status: 'beginning'
+			p1: null,
+			p2: null,
+			state: GameState(),
+			status: 'not started'
 		};
 		
-		self.advanceTo = function(state) {
-			self.state = state;
+		self.doMove = function(pos, player) {
 			
-			if ( state.isFinished() ) {
-				console.log('doh were done');
-				self.status = 'ended';
-				
-				switch(true) {
-					case state.result === 'X-won':
-						//switch UI to display Human (p1) won
-						console.log('X won!');
-						break;
-						
-					case state.result === 'O-won':
-						//switch UI to display Human (p1) lost
-						console.log('O won!');
-						break;
-						
-					default:
-						//switch UI to display a draw
-						console.log('Game is a draw!');
-						break;
-				}
-			}
-			else {
-				if ( self.state.turn === 'X' ) {
-					//switch ui to display Human (p1) turn
-					//temporarily hard coding ai player here for testing
-					//throw new Error('p1!');
-					self.p1.notify('X');
-				}
-				else {
-					//switch UI to display AI (p2) turn and tell it to go
-					//throw new Error('p2!');
-					self.p2.notify('O');
-				}
-			}
-		};
-		
-		self.start = function(pos) {
-			if ( self.status === 'beginning' ) {
-				self.status = 'running';
-				
-				if ( pos ) {
-					self.state.cells[ pos ] = self.state.turn;
+			self.state.doMove(pos, player);
+			UI.insertAt(pos, player.icon);
 			
-					if ( self.state.turn === 'O' ) {
-						self.state.p2_moves++;
-					} else {
-						self.state.p1_moves++;
-					}
-					
-					console.log('starting game with player ', self.state.turn);
-					
-					self.state.advanceTurn();
-				}
+			var winner = self.state.checkForWinner(),
+			full = self.state.isFull();
 				
-				self.advanceTo( self.state );
+			if ( winner ) {
+				console.log(winner.name + ' won!');
+				UI.switchView('won', winner);
+			} else if ( full ) {
+				console.log('Its a draw!');
+				UI.switchView('draw');
+			} else {
+				console.log('advancing state');
+				console.table(self.state.board);
+				self.advanceState();
 			}
 		};
 		
-		self.score = function(state) {
-			if ( state.result !== 'in progress' ) {
-				switch(true) {
-					case state.result === 'X-won':
-						/* p1 won */
-						if ( state.turn === 'X' ) {
-							return 10 - state.p1_moves;
-						} else {
-							return 10 - state.p2_moves;
-						}
-						break;
-						
-					case state.result === 'O-won':
-						/* p2 won */
-						if ( state.turn === 'X' ) {
-							return -10 + state.p1_moves;
-						} else {
-							return -10 + state.p2_moves;
-						}
-						break;
-						
-					default:
-						/* draw */
-						return 0;
-						break;
+		self.advanceState = function() {
+			// switch players
+			self.state.advance();
+			
+			// notify player
+			if ( self.state.turn === 1 ) {
+				self.p1.notify();
+			} else {
+				self.p2.notify();
+			}
+		};
+		
+		self.start = function() {
+			console.log('starting game!');
+			
+			// make sure we're clean
+			UI.resetBoard();
+			self.state = GameState();
+			
+			// notify player 1
+			self.p1.notify();
+		};
+		
+		self.registerClick = function(index) {
+			index = parseInt(index);
+			
+			// goof proof
+			if ( !self.state.isFinished() || self.status !== 'not started' ) {
+				// occupado?
+				if ( self.state.board[index] === 0 ) {
+					var player = self.state.turn === 1 ? self.p1 : self.p2;
+					player.doMove(index);
 				}
 			}
 		};
@@ -113,23 +75,36 @@
 	/**
 	 *	GameState
 	 *
-	 *	Model for our game states.
+	 *	Factory for our game states. It defaults to empty board and Player 1 turn.
 	 */
 	var GameState = function(data) {
-		var self = $dd.model({
+		var self = {
 			turn: 1,
 			p1_moves: 0,
 			p2_moves: 0,
-			result: 'in progress',
-			board: [0,0,0,0,0,0,0,0,0]
-		});
-		
-		self.clone = function() {
-			return GameState(self.out());
+			board: [0,0,0,0,0,0,0,0,0],
+			status: 'running'
 		};
 		
-		self.advanceTurn = function() {
+		if ( data ) {
+			self.turn = data.turn;
+			self.p1_moves = data.p1_moves;
+			self.p2_moves = data.p2_moves;
+			self.board = data.board;
+		}
+		
+		self.advance = function() {
 			self.turn = self.turn === 1 ? 2 : 1;
+		};
+		
+		self.doMove = function(pos, player) {
+			self.board[ pos ] = player;
+			
+			if ( player.id === 1 ) {
+				self.p1_moves++;
+			} else {
+				self.p2_moves++;
+			}
 		};
 		
 		self.getMoves = function() {
@@ -144,73 +119,117 @@
 			return indexes;
 		};
 		
-		self.isFinished = function() {
-			var c = self.cells,
-				available = self.emptyCells(),
-				ni, ne;
+		self.getScore = function() {
+			var winner = self.checkForWinner(),
+				full = self.isFull(),
+				obj = {
+					winner: false,
+					score: 0
+				};
+		
+			if ( winner ) {
+				obj.winner = winner;
 				
-				console.log('empty cells', available);
-			
-			/* Check rows */
-			for ( ni = 0; ni <= 6; ni += 3 ) {
-				if ( c[ni] !== 'E' && c[ni] === c[ni + 1] && c[ni + 1] === c[ni + 2] ) {
-					self.result = c[ni] + '-won';
-					console.log('found a row');
-					return true;
+				if ( winner.id != self.turn ) {
+					var moves = winner.id === 1 ? self.p2_moves : self.p1_moves;
+					obj.score = 10 - moves;
+				} else {
+					var moves = winner.id === 1 ? self.p1_moves : self.p2_moves;
+					obj.score = -10 + moves;
 				}
+			} else if ( full ) {
+				obj.winner = 'tie';
+				obj.score = 0;
 			}
-			
-			/* Check columns */
-			for ( ni = 0; ni <= 2; ni++ ) {
-				if ( c[ni] !== 'E' && c[ni] === c[ni + 3] && c[ni + 3] === c[ni + 6] ) {
-					self.result = c[ni] + '-won';
-					console.log('found a column');
-					return true;
-				}
-			}
-			
-			/* Check diagonals */
-			for ( ni = 0, ne = 4; ni <= 2; ni += 2, ne -= 2 ) {
-				if ( c[ni] !== 'E' && c[ni] === c[ni + ne] && c[ni + ne] === c[ni + 2*ne] ) {
-					self.result = c[ni] + '-won';
-					console.log('found a diagonal');
-					return true;
-				}
-			}
-			
-			if ( !available.length ) {
-				self.result = 'draw';
-				return true;
-			}
-			else {
-				return false;
-			}
+		
+			return obj;
 		};
 		
-		return self.fill(data);
+		self.checkForWinner = function() {
+			var win_list = [
+				[0, 1, 2], //rows
+				[3, 4, 5],
+				[6, 7, 8],
+				[0, 3, 6], //columns
+				[1, 4, 7],
+				[2, 5, 8],
+				[0, 4, 8], //diagonals
+				[2, 4, 6]
+			], ni;
+			
+			for ( ni = 0; ni < win_list.length; ni++ ) {
+				var a = self.board[ win_list[ni][0] ],
+					b = self.board[ win_list[ni][1] ],
+					c = self.board[ win_list[ni][2] ];
+					
+				if ( a === b && a === c && a !== 0 ) {
+					return a;
+				}
+			}
+			
+			return false;
+		};
+		
+		self.isFull = function() {
+			var board = self.board, ni;
+			
+			for ( ni = 0; ni < board.length; ni++ ) {
+				if ( board[ni] === 0 ) {
+					return false;
+				}
+			}
+			
+			return true;
+		};
+		
+		self.isFinished = function() {
+			if ( self.checkForWinner() || self.isFull() ) {
+				return true;
+			}
+			
+			return false;
+		};
+		
+		self.clone = function() {
+			var nstate = {
+				turn: self.turn,
+				p1_moves: self.p1_moves,
+				p2_moves: self.p2_moves,
+				board: []
+			}, ni;
+			
+			for ( ni = 0; ni < self.board.length; ni++ ) {
+				nstate.board[ni] = self.board[ni];
+			}
+			
+			return GameState(nstate);
+		};
+		
+		return self;
 	};
 	
 	/**
 	 *	Player
 	 *
-	 *	Base model for our players.
+	 *	Base model for our players. Defaults to Human Player 1.
 	 */
 	var Player = function(data) {
 		var self = $dd.model({
 			id: 1,
-			name: 'Human Player',
-			kind: 'human',
-			icon: 'X'
+			kind: 'human', // bet you're wondering why we need this. you'll see soon enough as you trace your way through the game functions.
+			icon: 'X',
+			moves: 0
 		});
 		
-		var count = 0;
-		
-		self.notify = function(turn) {
-			console.log(self.name + ' turn! Make a move.');
+		self.notify = function() {
+			console.log('Player ' + self.id + ' turn! Make a move.');
+			
+			UI.switchView('turn', self);
 		};
 		
-		self.makeMove = function() {
-			
+		self.doMove = function(pos) {
+			self.moves++;
+			$dd.ioc.get('game').doMove(pos, self);
 		};
 		
 		return self.fill(data);
@@ -224,77 +243,64 @@
 	var AiPlayer = function(data) {
 		var self = Player({
 			id: 2,
-			name: 'AI Player',
 			kind: 'ai',
 			icon: 'O'
 		});
 		
-		function minimaxValue(state) {
-			if ( state.isFinished() ) {
-				return self.game.score(state);
-			}
+		self.notify = function() {
+			console.log('Player ' + self.id + ' turn! Make a move.');
 			
-			var empty_cells = state.emptyCells(),
-				state_score;
+			UI.switchView('turn', self);
 			
-			if ( state.turn === 'X' && self.id === 2 || state.turn === 'O' && self.id === 1 ) {
-				state_score = -1000;
-			} else if ( state.turn === 'X' && self.id === 1 || state.turn === 'O' && self.id === 2 ) {
-				state_score = 1000;
-			}
+			// ok let's find our best move!
+			var move = getBestMove();
 			
-			var next_states = empty_cells.map(function(pos) {
-				return AiAction(pos).applyTo(state);
-			});
+			console.log('found best move! applying now', move);
 			
-			next_states.forEach(function(next_state) {
-				var score = minimaxValue( next_state );
-				
-				if ( state.turn === 'X') {
-					if ( score > state_score ) {
-						state_score = score;
-					}
-				} else {
-					if ( score < state_score ) {
-						state_score = score;
-					}
-				}
-			});
-			
-			return state_score;
+			// then apply it. add a bit of a delay so the human doesn't feel so sluggish ;)
+			setTimeout(function() {
+				self.doMove(move.pos, self);
+			}, 2000);
 		};
 		
-		self.notify = function(turn) {
-			self.makeMove(turn);
-		};
-		
-		/* We override the default makeMove to add AI functions. */
-		self.makeMove = function(turn) {
-			console.log(self.name + '(' + turn + ') is taking a turn now');
-			var empty_cells = self.game.state.emptyCells();
+		function getBestMove() {
+			// first we get the current game state
+			var state = $dd.ioc.get('game').state;
 			
-			throw new Error('derp!');
-			
-			//throw new Error('derp!');
-			var possible_actions = empty_cells.map(function(pos) {
-				var action = AiAction(pos),
-					next = action.applyTo( self.game.state );
-					
-				action.minimaxValue = minimaxValue( next );
+			// then get available moves and feed them to the AI
+			var possible_moves = state.getMoves().map(function(pos) {
+				// clone the game state so we can work with it
+				var nstate = makeNewState(state, pos);
+				// calculate the Minimax score of this new state
+				var score = minimaxValue( nstate );
 				
-				return action;
+				// return score and position
+				return {
+					score: score,
+					pos: pos
+				};
 			});
 			
-			throw new Error('derp!');
+			console.log(possible_moves);
+			possible_moves = sortMoves(possible_moves, state);
 			
-			if ( turn === 'X' ) {
-				possible_actions.sort( function(a, b) {
+			// pick the first one and return it.
+			return possible_moves[0];
+		};
+		
+		function sortMoves(moves, state) {
+			// now let's sort the best possible moves by their scores. we'll use the top score.
+			// if it's our (the AI) turn, we wanna maximize our score.
+			// if it's the other player (also might be AI), we wanna minimize their score.
+			if ( state.turn === self.id ) {
+				console.log('sorting desc');
+				moves.sort( function(a, b) {
 					switch(true) {
-						case ( a.minimaxValue > b.minimaxValue ):
+						case ( a.score > b.score ):
 							return -1;
 							break;
 					
-						case ( a.minimaxValue < b.minimaxValue ):
+						case ( a.score < b.score ):
 							return 1;
 							break;
 					
@@ -304,13 +310,14 @@
 					}
 				} );
 			} else {
-				possible_actions.sort( function(a, b) {
+				console.log('sorting asc');
+				moves.sort( function(a, b) {
 					switch(true) {
-						case ( a.minimaxValue < b.minimaxValue ):
+						case ( a.score < b.score ):
 							return -1;
 							break;
 					
-						case ( a.minimaxValue > b.minimaxValue ):
+						case ( a.score > b.score ):
 							return 1;
 							break;
 					
@@ -321,81 +328,133 @@
 				} );
 			}
 			
-			var chosen_action = possible_actions[0];
+			return moves;
+		};
+		
+		function minimaxValue(state) {
+			// return max score if game's finished
+			if ( state.isFinished() ) {
+				return state.getScore().score;
+			}
 			
-			var next = chosen_action.applyTo( self.game.state );
+			// if it's not our turn, we want to minimize
+			var score;
+			if ( state.turn !== self.id ) {
+				score = -1000;
+			} else {
+				score = 1000;
+			}
 			
-			throw new Error('derp!');
+			// let's generate new states from the available moves
+			var nstates = state.getMoves().map(function(pos) {
+				return makeNewState(state, pos);
+			});
+			
+			// calculate minimax scores for available moves in these states
+			nstates.forEach(function(nstate) {
+				// get minimax score. warning: this is a recursive beast
+				var nscore = minimaxValue(nstate);
 				
-			//update board UI to show placed move with chosen_action.pos & turn
-			//ui.insertAt(pos, turn);
+				// we wanna maximize this time
+				if ( state.turn !== self.id ) {
+					if ( nscore > score ) {
+						score = nscore;
+					}
+				} else {
+					if ( nscore < score ) {
+						score = nscore;
+					}
+				}
+			});
 			
-			self.game.advanceTo(next);
+			return score;
+		};
+		
+		function makeNewState(state, pos) {
+			// clone the game state so we can work with it
+			var nstate = state.clone();
+			
+			// apply the new position
+			nstate.doMove(pos, self);
+			
+			// advance the turn
+			nstate.advance();
+			
+			return nstate;
 		};
 		
 		return self.fill(data);
 	};
 	
 	/**
-	 *	AiAction
+	 *	UI
 	 *
-	 *	Function for doing AI Player actions.
+	 *	Providing a UI service to the game
 	 */
-	var AiAction = function(pos) {
-		var self = {
-			pos: pos,
-			minimaxValue: 0
-		};
+	var UI = {
+		show_controls: true,
+		current_view: 'start',
 		
-		self.applyTo = function(state) {
-			var next = state.clone();
+		switchView: function(view, object) {
+			console.log('switchView', view, object);
 			
-			next.cells[ self.pos ] = state.turn;
+			// fade out current view
+			//console.log('curr view', UI.current_view);
+			//$dd.dom('#' + UI.current_view).css({ display: 'none' });
+			$dd.dom('#start').css({ display: 'none' });
+			$dd.dom('.player-types').each(function(obj) {
+				obj.css({ display: 'none' });
+			});
+			$dd.dom('.player-turn').each(function(obj) {
+				obj.css({ display: 'none' });
+			});
 			
-			if ( state.turn === 'O' ) {
-				next.p2_moves++;
-			} else {
-				next.p1_moves++;
-			}
+			// set current view to new view
+			UI.current_view = view;
 			
-			next.advanceTurn();
-			
-			return next;
-		};
-		
-		self.ASC = function(a, b) {
-			switch(true) {
-				case ( a.minimaxValue < b.minimaxValue ):
-					return -1;
+			switch(view) {
+				case 'start':
+					$dd.dom('#start').css({ display: 'block' });
 					break;
 					
-				case ( a.minimaxValue > b.minimaxValue ):
-					return 1;
+				case 'won':
+					$dd.dom('.p' + object.id + ' .player-turn').html('Winner!').css({ display: 'block' });
+					$dd.dom('#start').css({ display: 'block' });
 					break;
 					
-				default:
-					return 0;
-					break;
-			}
-		};
-		
-		self.DESC = function(a, b) {
-			switch(true) {
-				case ( a.minimaxValue > b.minimaxValue ):
-					return -1;
+				case 'draw':
+					$dd.dom('.player-turn').each(function(obj) {
+						obj.html('Draw!').css({ display: 'block' });
+					});
 					break;
 					
-				case ( a.minimaxValue < b.minimaxValue ):
-					return 1;
-					break;
-					
-				default:
-					return 0;
+				case 'turn':
+					var turn = $dd.dom('.p' + object.id + ' .player-turn');
+					if ( object.kind === 'human' ) {
+						turn.html('It\'s your turn!');
+					} else {
+						turn.html('A.I. is thinking...');
+					}
+					turn.css({ display: 'block' });
 					break;
 			}
-		};
+		},
 		
-		return self;
+		insertAt: function(index, symbol) {
+			var cell = $dd.dom('.cell').get(index);
+			
+			cell.html(symbol);
+			cell.css({
+				color : symbol === 'X' ? 'green' : 'red'
+			});
+			cell.addClass('occupied');
+		},
+		
+		resetBoard: function() {
+			$dd.dom('.cell').each(function(cell) {
+				cell.html('').removeClass('occupied');
+			});
+		}
 	};
 	
 	/**
@@ -405,22 +464,54 @@
 	 */
 	$dd.init(function() {
 		var game = Game();
-		
-		game.p1 = Player();
-		game.p2 = AiPlayer();
-		
+	
 		/*	register our game with the ioc
 			so we can access it from anywhere */
 		$dd.ioc.register('game', function() {
 			return game;
 		});
 		
-		/*  If this is AI vs AI we need to give Player 1
-			a starting position. Let's randomize it too. */
-		if ( game.p1.kind === 'ai' ) {
-			game.start( Math.floor( Math.random() * 8 ) );
-		} else {
-			game.start();
-		}
+		// Listen for game start click
+		$dd.dom('#start').on('click', function(evt) {
+			// let's find out which player is an AI
+			var p1, p2;
+			$dd.dom('input[name="p2-type"]').each(function(p) {
+				if ( p[0].checked ) {
+					p2 = p[0].value;
+				}
+			});
+			$dd.dom('input[name="p1-type"]').each(function(p) {
+				if ( p[0].checked ) {
+					p1 = p[0].value;
+				}
+			});
+			
+			console.log(p1, p2);
+			
+			if ( p1 === 'ai' ) {
+				game.p1 = AiPlayer();
+			} else {
+				game.p1 = Player();
+			}
+			if ( p2 === 'ai' ) {
+				game.p2 = AiPlayer();
+			} else {
+				game.p2 = Player();
+			}
+			
+			/*  If this is AI vs AI we need to give Player 1
+				a starting position. Let's randomize it too. */
+			if ( game.p1.kind === 'ai' ) {
+				game.start( Math.floor( Math.random() * 8 ) );
+			} else {
+				game.start();
+			}
+		});
+		
+		$dd.dom('.cell').each(function(cell) {
+			cell.on('click', function(evt) {
+				game.registerClick( cell[0].attributes['board-index'].value );
+			});
+		});
 	});
 })();
