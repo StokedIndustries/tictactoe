@@ -3,8 +3,46 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Tic Tac Toe by Ryan Marshall</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.2/css/font-awesome.min.css">
+	<link rel="stylesheet" href="styles.css">
 </head>
 <body>
+	<div class="main-container">
+		<div class="board">
+			<div class="cell" board-index="0"></div>
+			<div class="cell" board-index="1"></div>
+			<div class="cell" board-index="2"></div>
+			<div class="cell" board-index="3"></div>
+			<div class="cell" board-index="4"></div>
+			<div class="cell" board-index="5"></div>
+			<div class="cell" board-index="6"></div>
+			<div class="cell" board-index="7"></div>
+			<div class="cell" board-index="8"></div>
+		</div>
+	
+		<div class="control">
+			<!-- div.intial displays the starting controls -->
+			<div id="initial">
+				<div class="difficulty">
+					<span class="level not-selected" id="blind">Blind</span>
+					<span class="level not-selected" id="novice">Novice</span>
+					<span class="level not-selected" id="master">Master</span>
+				</div>
+			
+				<div id="start">Start</div>
+			</div>
+		
+			<!-- div.ingame displays in-game messages and controls -->
+			<div class="ingame" id="turn">It's your turn...</div>
+			<div class="ingame" id="ai">
+				<i class="fa fa-android fa-5x"></i>
+				<p>Thinking...</p>
+			</div>
+			<div class="ingame" id="won">You won!</div>
+			<div class="ingame" id="lost">You lost!</div>
+			<div class="ingame" id="draw">It's a Draw</div>
+		</div>
+	</div>
 	
 	<script src="vendor/drdelambre/dd.js"></script>
 	<script src="vendor/drdelambre/modules/dom.js"></script>
@@ -13,5 +51,6 @@
 	<script src="vendor/drdelambre/modules/pubsub.js"></script>
 	<script src="vendor/drdelambre/modules/ioc.js"></script>
 	<script src="game3.js"></script>
+	<script src="ui.js"></script>
 </body>
 </html>

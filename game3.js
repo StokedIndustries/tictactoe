@@ -8,19 +8,25 @@
 		var self = {
 			p1: null,
 			p2: null,
-			state: GameState()
+			state: GameState(),
+			status: 'not started'
 		};
 		
 		self.doMove = function(pos, player) {
+			var ui = $dd.ioc.get('ui');
+			
 			self.state.doMove(pos, player);
+			ui.insertAt(pos, player.icon);
 			
 			var winner = self.state.checkForWinner(),
-				full = self.state.isFull();
+			full = self.state.isFull();
 				
 			if ( winner ) {
 				console.log(winner.name + ' won!');
+				ui.switchView('win', winner);
 			} else if ( full ) {
 				console.log('Its a draw!');
+				ui.switchView('draw');
 			} else {
 				console.log('advancing state');
 				console.table(self.state.board);
@@ -44,6 +50,19 @@
 			console.log('starting game!');
 			
 			self.p1.notify();
+		};
+		
+		self.registerClick = function(index) {
+			index = parseInt(index);
+			
+			// goof proof
+			if ( !self.state.isFinished() || self.status !== 'not started' ) {
+				// occupado?
+				if ( self.state.board[index] === 0 ) {
+					var player = self.state.turn === 1 ? self.p1 : self.p2;
+					player.doMove(index);
+				}
+			}
 		};
 		
 		return self;
@@ -183,6 +202,8 @@
 		
 		self.notify = function() {
 			console.log(self.name + ' turn! Make a move.');
+			
+			$dd.ioc.get('ui').switchView('turn', self);
 		};
 		
 		self.doMove = function(pos) {
@@ -224,8 +245,6 @@
 			
 			// then get available moves and feed them to the AI
 			var possible_moves = state.getMoves().map(function(pos) {
-				console.log('thinking...');
-				
 				// clone the game state so we can work with it
 				var nstate = makeNewState(state, pos);
 				
@@ -342,23 +361,33 @@
 	 *	Let's load it all up!
 	 */
 	$dd.init(function() {
-		var game = Game();
 		
+		var game = Game();
+	
 		game.p1 = Player();
 		game.p2 = AiPlayer();
-		
+	
 		/*	register our game with the ioc
 			so we can access it from anywhere */
 		$dd.ioc.register('game', function() {
 			return game;
 		});
 		
-		/*  If this is AI vs AI we need to give Player 1
-			a starting position. Let's randomize it too. */
-		if ( game.p1.kind === 'ai' ) {
-			game.start( Math.floor( Math.random() * 8 ) );
-		} else {
-			game.start();
-		}
+		// Listen for game start click
+		$dd.dom('#start').on('click', function(evt) {
+			/*  If this is AI vs AI we need to give Player 1
+				a starting position. Let's randomize it too. */
+			if ( game.p1.kind === 'ai' ) {
+				game.start( Math.floor( Math.random() * 8 ) );
+			} else {
+				game.start();
+			}
+		});
+		
+		$dd.dom('.cell').each(function(cell) {
+			cell.on('click', function(evt) {
+				game.registerClick( cell[0].attributes['board-index'].value );
+			});
+		});
 	});
 })();
