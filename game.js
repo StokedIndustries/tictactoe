@@ -18,7 +18,6 @@
 		};
 		
 		self.advanceTo = function(state) {
-			console.log('advancing state');
 			self.state = state;
 			
 			if ( state.isFinished() ) {
@@ -43,22 +42,38 @@
 				}
 			}
 			else {
-				console.log('not quite done yet');
 				if ( self.state.turn === 'X' ) {
 					//switch ui to display Human (p1) turn
 					//temporarily hard coding ai player here for testing
-					self.p1.makeMove('X');
+					//throw new Error('p1!');
+					self.p1.notify('X');
 				}
 				else {
 					//switch UI to display AI (p2) turn and tell it to go
-					self.p2.makeMove('O');
+					//throw new Error('p2!');
+					self.p2.notify('O');
 				}
 			}
 		};
 		
-		self.start = function() {
+		self.start = function(pos) {
 			if ( self.status === 'beginning' ) {
 				self.status = 'running';
+				
+				if ( pos ) {
+					self.state.cells[ pos ] = self.state.turn;
+			
+					if ( self.state.turn === 'O' ) {
+						self.state.p2_moves++;
+					} else {
+						self.state.p1_moves++;
+					}
+					
+					console.log('starting game with player ', self.state.turn);
+					
+					self.state.advanceTurn();
+				}
+				
 				self.advanceTo( self.state );
 			}
 		};
@@ -68,12 +83,20 @@
 				switch(true) {
 					case state.result === 'X-won':
 						/* p1 won */
-						return 10 - state.ai_moves;
+						if ( state.turn === 'X' ) {
+							return 10 - state.p1_moves;
+						} else {
+							return 10 - state.p2_moves;
+						}
 						break;
 						
 					case state.result === 'O-won':
 						/* p2 won */
-						return -10 + state.ai_moves;
+						if ( state.turn === 'X' ) {
+							return -10 + state.p1_moves;
+						} else {
+							return -10 + state.p2_moves;
+						}
 						break;
 						
 					default:
@@ -93,32 +116,27 @@
 	 *	Model for our game states.
 	 */
 	var GameState = function(data) {
-		/* Defining our game state model */
 		var self = $dd.model({
-			turn: '',
-			ai_moves: 0,
+			turn: 1,
+			p1_moves: 0,
+			p2_moves: 0,
 			result: 'in progress',
-			cells: []
+			board: [0,0,0,0,0,0,0,0,0]
 		});
-		//self.fill(data);
 		
 		self.clone = function() {
 			return GameState(self.out());
 		};
 		
 		self.advanceTurn = function() {
-			self.turn = self.turn === 'X' ? 'O' : 'X';
+			self.turn = self.turn === 1 ? 2 : 1;
 		};
 		
-		/**
-		 *	public function that enumerates the empty cells in state
-		 *	@return [Array]: indices of all empty cells
-		 */
-		self.emptyCells = function() {
+		self.getMoves = function() {
 			var indexes = [], ni;
 			
 			for ( ni = 0; ni < 9; ni++ ) {
-				if ( self.cells[ni] === 'E' ) {
+				if ( self.board[ni] === 0 ) {
 					indexes.push(ni);
 				}
 			}
@@ -179,9 +197,17 @@
 	 */
 	var Player = function(data) {
 		var self = $dd.model({
+			id: 1,
 			name: 'Human Player',
-			game: {}
+			kind: 'human',
+			icon: 'X'
 		});
+		
+		var count = 0;
+		
+		self.notify = function(turn) {
+			console.log(self.name + ' turn! Make a move.');
+		};
 		
 		self.makeMove = function() {
 			
@@ -197,7 +223,10 @@
 	 */
 	var AiPlayer = function(data) {
 		var self = Player({
-			name: 'AI Player'
+			id: 2,
+			name: 'AI Player',
+			kind: 'ai',
+			icon: 'O'
 		});
 		
 		function minimaxValue(state) {
@@ -208,9 +237,9 @@
 			var empty_cells = state.emptyCells(),
 				state_score;
 			
-			if ( state.turn === 'X' ) {
+			if ( state.turn === 'X' && self.id === 2 || state.turn === 'O' && self.id === 1 ) {
 				state_score = -1000;
-			} else {
+			} else if ( state.turn === 'X' && self.id === 1 || state.turn === 'O' && self.id === 2 ) {
 				state_score = 1000;
 			}
 			
@@ -219,7 +248,6 @@
 			});
 			
 			next_states.forEach(function(next_state) {
-				console.log('thinking ahead a bit...');
 				var score = minimaxValue( next_state );
 				
 				if ( state.turn === 'X') {
@@ -236,12 +264,18 @@
 			return state_score;
 		};
 		
+		self.notify = function(turn) {
+			self.makeMove(turn);
+		};
+		
 		/* We override the default makeMove to add AI functions. */
 		self.makeMove = function(turn) {
 			console.log(self.name + '(' + turn + ') is taking a turn now');
 			var empty_cells = self.game.state.emptyCells();
-			console.log('empty cells', empty_cells);
 			
+			throw new Error('derp!');
+			
+			//throw new Error('derp!');
 			var possible_actions = empty_cells.map(function(pos) {
 				var action = AiAction(pos),
 					next = action.applyTo( self.game.state );
@@ -250,7 +284,8 @@
 				
 				return action;
 			});
-			console.log('possible actions:', possible_actions.length);
+			
+			throw new Error('derp!');
 			
 			if ( turn === 'X' ) {
 				possible_actions.sort( function(a, b) {
@@ -288,9 +323,9 @@
 			
 			var chosen_action = possible_actions[0];
 			
-			console.log('chosen pos', chosen_action.pos);
-			
 			var next = chosen_action.applyTo( self.game.state );
+			
+			throw new Error('derp!');
 				
 			//update board UI to show placed move with chosen_action.pos & turn
 			//ui.insertAt(pos, turn);
@@ -315,12 +350,12 @@
 		self.applyTo = function(state) {
 			var next = state.clone();
 			
-			console.log('cloned state', next);
-			
 			next.cells[ self.pos ] = state.turn;
 			
 			if ( state.turn === 'O' ) {
-				next.ai_moves++;
+				next.p2_moves++;
+			} else {
+				next.p1_moves++;
 			}
 			
 			next.advanceTurn();
@@ -329,7 +364,6 @@
 		};
 		
 		self.ASC = function(a, b) {
-			console.log('sort asc');
 			switch(true) {
 				case ( a.minimaxValue < b.minimaxValue ):
 					return -1;
@@ -346,7 +380,6 @@
 		};
 		
 		self.DESC = function(a, b) {
-			console.log('sort desc');
 			switch(true) {
 				case ( a.minimaxValue > b.minimaxValue ):
 					return -1;
@@ -373,18 +406,21 @@
 	$dd.init(function() {
 		var game = Game();
 		
-		game.p1 = AiPlayer({
-			name: 'AI 1',
-			game: game
-		});
-		game.p2 = AiPlayer({
-			name: 'AI 2',
-			game: game
-		});
-		game.start();
+		game.p1 = Player();
+		game.p2 = AiPlayer();
 		
-		/*$dd.ioc.register('game', function() {
+		/*	register our game with the ioc
+			so we can access it from anywhere */
+		$dd.ioc.register('game', function() {
 			return game;
-		});*/
+		});
+		
+		/*  If this is AI vs AI we need to give Player 1
+			a starting position. Let's randomize it too. */
+		if ( game.p1.kind === 'ai' ) {
+			game.start( Math.floor( Math.random() * 8 ) );
+		} else {
+			game.start();
+		}
 	});
 })();
