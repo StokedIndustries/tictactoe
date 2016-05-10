@@ -48,7 +48,6 @@
 		
 		self.start = function() {
 			console.log('starting game!');
-			
 			self.p1.notify();
 		};
 		
@@ -74,12 +73,20 @@
 	 *	Factory for our game states. It defaults to empty board and Player 1 turn.
 	 */
 	var GameState = function(data) {
-		var self = $dd.model({
+		var self = {
 			turn: 1,
 			p1_moves: 0,
 			p2_moves: 0,
-			board: [0,0,0,0,0,0,0,0,0]
-		});
+			board: [0,0,0,0,0,0,0,0,0],
+			status: 'running'
+		};
+		
+		if ( data ) {
+			self.turn = data.turn;
+			self.p1_moves = data.p1_moves;
+			self.p2_moves = data.p2_moves;
+			self.board = data.board;
+		}
 		
 		self.advance = function() {
 			self.turn = self.turn === 1 ? 2 : 1;
@@ -114,12 +121,11 @@
 					winner: false,
 					score: 0
 				};
-			
+		
 			if ( winner ) {
 				obj.winner = winner;
 				
-				// here's the evil part that totally bludgeons the human. the AI always wins or ties!
-				if ( winner.kind === 'human' ) {
+				if ( winner.id != self.turn ) {
 					var moves = winner.id === 1 ? self.p2_moves : self.p1_moves;
 					obj.score = 10 - moves;
 				} else {
@@ -130,7 +136,7 @@
 				obj.winner = 'tie';
 				obj.score = 0;
 			}
-			
+		
 			return obj;
 		};
 		
@@ -172,7 +178,7 @@
 		};
 		
 		self.isFinished = function() {
-			if ( self.isFull() || self.checkForWinner() ) {
+			if ( self.checkForWinner() || self.isFull() ) {
 				return true;
 			}
 			
@@ -180,10 +186,21 @@
 		};
 		
 		self.clone = function() {
-			return GameState( self.out() );
+			var nstate = {
+				turn: self.turn,
+				p1_moves: self.p1_moves,
+				p2_moves: self.p2_moves,
+				board: []
+			}, ni;
+			
+			for ( ni = 0; ni < self.board.length; ni++ ) {
+				nstate.board[ni] = self.board[ni];
+			}
+			
+			return GameState(nstate);
 		};
 		
-		return self.fill(data);
+		return self;
 	};
 	
 	/**
@@ -247,7 +264,6 @@
 			var possible_moves = state.getMoves().map(function(pos) {
 				// clone the game state so we can work with it
 				var nstate = makeNewState(state, pos);
-				
 				// calculate the Minimax score of this new state
 				var score = minimaxValue( nstate );
 				
@@ -258,11 +274,20 @@
 				};
 			});
 			
+			console.log(possible_moves);
+			possible_moves = sortMoves(possible_moves, state);
+			
+			// pick the first one and return it.
+			return possible_moves[0];
+		};
+		
+		function sortMoves(moves, state) {
 			// now let's sort the best possible moves by their scores. we'll use the top score.
 			// if it's our (the AI) turn, we wanna maximize our score.
 			// if it's the other player (also might be AI), we wanna minimize their score.
 			if ( state.turn === self.id ) {
-				possible_moves.sort( function(a, b) {
+				console.log('sorting desc');
+				moves.sort( function(a, b) {
 					switch(true) {
 						case ( a.score > b.score ):
 							return -1;
@@ -278,7 +303,8 @@
 					}
 				} );
 			} else {
-				possible_moves.sort( function(a, b) {
+				console.log('sorting asc');
+				moves.sort( function(a, b) {
 					switch(true) {
 						case ( a.score < b.score ):
 							return -1;
@@ -295,14 +321,12 @@
 				} );
 			}
 			
-			// pick the first one and return it.
-			return possible_moves[0];
+			return moves;
 		};
 		
 		function minimaxValue(state) {
 			// return max score if game's finished
 			if ( state.isFinished() ) {
-				//console.log('finished, score: ' + state.getScore().score);
 				return state.getScore().score;
 			}
 			
@@ -314,7 +338,7 @@
 				score = 1000;
 			}
 			
-			// let's generate new states for the available moves
+			// let's generate new states from the available moves
 			var nstates = state.getMoves().map(function(pos) {
 				return makeNewState(state, pos);
 			});
@@ -324,7 +348,7 @@
 				// get minimax score. warning: this is a recursive beast
 				var nscore = minimaxValue(nstate);
 				
-				// if it's not our turn, we want to maximize the score
+				// we wanna maximize this time
 				if ( state.turn !== self.id ) {
 					if ( nscore > score ) {
 						score = nscore;
