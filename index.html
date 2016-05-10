@@ -23,24 +23,43 @@
 		<div class="control">
 			<!-- div.intial displays the starting controls -->
 			<div id="initial">
-				<div class="difficulty">
-					<span class="level not-selected" id="blind">Blind</span>
-					<span class="level not-selected" id="novice">Novice</span>
-					<span class="level not-selected" id="master">Master</span>
+				<div class="players clearfix">
+					<div class="player p1">
+						Player 1<br>
+						
+						<div class="player-types">
+							<label for="p1-type">
+								<input type="radio" name="p1-type" value="human" checked="checked">
+								Human
+							</label>
+							<label for="p1-type">
+								<input type="radio" name="p1-type" value="ai">
+								A.I.
+							</label>
+						</div>
+						
+						<div class="player-turn">Player's Turn</div>
+					</div>
+					<div class="player p2">
+						Player 2<br>
+						
+						<div class="player-types">
+							<label for="p2-type-human">
+								<input type="radio" id="p2-type-human" name="p2-type" value="human">
+								Human
+							</label>
+							<label for="p2-type-ai">
+								<input type="radio" id="p2-type-ai" name="p2-type" value="ai" checked="checked">
+								A.I.
+							</label>
+						</div>
+						
+						<div class="player-turn">Player's Turn</div>
+					</div>
 				</div>
 			
 				<div id="start">Start</div>
 			</div>
-		
-			<!-- div.ingame displays in-game messages and controls -->
-			<div class="ingame" id="turn">It's your turn...</div>
-			<div class="ingame" id="ai">
-				<i class="fa fa-android fa-5x"></i>
-				<p>Thinking...</p>
-			</div>
-			<div class="ingame" id="won">You won!</div>
-			<div class="ingame" id="lost">You lost!</div>
-			<div class="ingame" id="draw">It's a Draw</div>
 		</div>
 	</div>
 	

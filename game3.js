@@ -13,20 +13,19 @@
 		};
 		
 		self.doMove = function(pos, player) {
-			var ui = $dd.ioc.get('ui');
 			
 			self.state.doMove(pos, player);
-			ui.insertAt(pos, player.icon);
+			UI.insertAt(pos, player.icon);
 			
 			var winner = self.state.checkForWinner(),
 			full = self.state.isFull();
 				
 			if ( winner ) {
 				console.log(winner.name + ' won!');
-				ui.switchView('win', winner);
+				UI.switchView('won', winner);
 			} else if ( full ) {
 				console.log('Its a draw!');
-				ui.switchView('draw');
+				UI.switchView('draw');
 			} else {
 				console.log('advancing state');
 				console.table(self.state.board);
@@ -48,6 +47,12 @@
 		
 		self.start = function() {
 			console.log('starting game!');
+			
+			// make sure we're clean
+			UI.resetBoard();
+			self.state = GameState();
+			
+			// notify player 1
 			self.p1.notify();
 		};
 		
@@ -220,7 +225,7 @@
 		self.notify = function() {
 			console.log(self.name + ' turn! Make a move.');
 			
-			$dd.ioc.get('ui').switchView('turn', self);
+			UI.switchView('turn', self);
 		};
 		
 		self.doMove = function(pos) {
@@ -247,13 +252,17 @@
 		self.notify = function() {
 			console.log(self.name + ' turn! Make a move.');
 			
+			UI.switchView('turn', self);
+			
 			// ok let's find our best move!
 			var move = getBestMove();
 			
 			console.log('found best move! applying now', move);
 			
-			// then apply it
-			self.doMove(move.pos, self);
+			// then apply it. add a bit of a delay so the human doesn't feel so sluggish ;)
+			setTimeout(function() {
+				self.doMove(move.pos, self);
+			}, 2000);
 		};
 		
 		function getBestMove() {
@@ -377,6 +386,77 @@
 		};
 		
 		return self.fill(data);
+	};
+	
+	/**
+	 *	UI
+	 *
+	 *	Providing a UI service to the game
+	 */
+	var UI = {
+		show_controls: true,
+		current_view: 'start',
+		
+		switchView: function(view, object) {
+			console.log('switchView', view, object);
+			
+			// fade out current view
+			//console.log('curr view', UI.current_view);
+			//$dd.dom('#' + UI.current_view).css({ display: 'none' });
+			$dd.dom('#start').css({ display: 'none' });
+			$dd.dom('.player-types').each(function(obj) {
+				obj.css({ display: 'none' });
+			});
+			$dd.dom('.player-turn').each(function(obj) {
+				obj.css({ display: 'none' });
+			});
+			
+			// set current view to new view
+			UI.current_view = view;
+			
+			switch(view) {
+				case 'start':
+					$dd.dom('#start').css({ display: 'block' });
+					break;
+					
+				case 'won':
+					$dd.dom('.p' + object.id + ' .player-turn').html('Winner!').css({ display: 'block' });
+					$dd.dom('#start').css({ display: 'block' });
+					break;
+					
+				case 'draw':
+					$dd.dom('.player-turn').each(function(obj) {
+						obj.html('Draw!').css({ display: 'block' });
+					});
+					break;
+					
+				case 'turn':
+					var turn = $dd.dom('.p' + object.id + ' .player-turn');
+					if ( object.kind === 'human' ) {
+						turn.html('It\'s your turn!');
+					} else {
+						turn.html('A.I. is thinking...');
+					}
+					turn.css({ display: 'block' });
+					break;
+			}
+		},
+		
+		insertAt: function(index, symbol) {
+			var cell = $dd.dom('.cell').get(index);
+			
+			cell.html(symbol);
+			cell.css({
+				color : symbol === 'X' ? 'green' : 'red'
+			});
+			cell.addClass('occupied');
+		},
+		
+		resetBoard: function() {
+			$dd.dom('.cell').each(function(cell) {
+				cell.html('').removeClass('occupied');
+			});
+		}
 	};
 	
 	/**
