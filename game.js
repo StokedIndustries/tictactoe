@@ -57,12 +57,12 @@
 			if ( p1 === 'ai' ) {
 				self.p1 = AiPlayer({ id: 1, icon: 'X' });
 			} else {
-				self.p1 = Player();
+				self.p1 = Player({ id: 1, icon: 'X' });
 			}
 			if ( p2 === 'ai' ) {
 				self.p2 = AiPlayer({ id: 2, icon: 'O' });
 			} else {
-				self.p2 = Player();
+				self.p2 = Player({ id: 2, icon: 'O' });
 			}
 			
 			// make sure we're clean
