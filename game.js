@@ -142,7 +142,7 @@
 			return indexes;
 		};
 		
-		self.getScore = function() {
+		self.getScore = function(player) {
 			var winner = self.checkForWinner(),
 				full = self.isFull(),
 				score = 0;
@@ -150,7 +150,7 @@
 			if ( winner ) {
 				var moves = winner.id === 1 ? self.p2_moves : self.p1_moves;
 				
-				if ( winner.kind === 'human' ) {
+				if ( winner.id !== player.id ) {
 					score = 10 - moves;
 				} else {
 					score = -10 + moves;
@@ -341,7 +341,7 @@
 		function minimaxValue(state) {
 			// return max score if game's finished
 			if ( state.isFinished() ) {
-				return state.getScore();
+				return state.getScore(self);
 			}
 			
 			// if it's not our turn, we want to minimize the score
