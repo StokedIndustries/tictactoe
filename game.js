@@ -13,7 +13,6 @@
 		};
 		
 		self.doMove = function(pos, player) {
-			
 			self.state.doMove(pos, player);
 			UI.insertAt(pos, player.icon);
 			
@@ -322,7 +321,6 @@
 			// if it's our (the AI) turn, we wanna maximize our score.
 			// if it's the other player (also might be AI), we wanna minimize their score.
 			if ( state.turn === self.id ) {
-				console.log('sorting desc');
 				moves.sort( function(a, b) {
 					switch(true) {
 						case ( a.score > b.score ):
@@ -339,7 +337,6 @@
 					}
 				} );
 			} else {
-				console.log('sorting asc');
 				moves.sort( function(a, b) {
 					switch(true) {
 						case ( a.score < b.score ):
@@ -422,11 +419,8 @@
 	 */
 	var UI = {
 		switchView: function(view, object) {
-			console.log('switchView', view, object);
-			
-			// hide all current views
+			// hide current view
 			$dd.dom('.control').each(function(obj) {
-				console.log('hiding control divs');
 				obj.css({ display: 'none' });
 			});
 			
@@ -461,9 +455,7 @@
 		
 		insertAt: function(index, symbol) {
 			var cell = $dd.dom('.cell').get(index);
-			
 			cell.html(symbol);
-			cell.addClass('occupied');
 		},
 		
 		resetBoard: function() {
