@@ -8,8 +8,7 @@
 		var self = {
 			p1: null,
 			p2: null,
-			state: GameState(),
-			status: 'not started'
+			state: GameState()
 		};
 		
 		self.doMove = function(pos, player) {
@@ -87,7 +86,7 @@
 			index = parseInt(index);
 			
 			// goof proof
-			if ( !self.state.isFinished() || self.status !== 'not started' ) {
+			if ( !self.state.isFinished() ) {
 				// occupado?
 				if ( self.state.board[index] === 0 ) {
 					var player = self.state.turn === 1 ? self.p1 : self.p2;
@@ -109,8 +108,7 @@
 			turn: 1,
 			p1_moves: 0,
 			p2_moves: 0,
-			board: [0,0,0,0,0,0,0,0,0],
-			status: 'running'
+			board: [0,0,0,0,0,0,0,0,0]
 		};
 		
 		if ( data ) {
