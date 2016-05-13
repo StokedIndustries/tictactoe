@@ -1,40 +1,86 @@
+body {
+	padding: 0;
+	margin: 0;
+}
+
 .main-container {
 	height: 100%;
-	width: 900px;
+	width: 750px;
 	margin: 0 auto;
 }
 
 .board {
-	height: 420px;
-	width: 420px;
-	margin: 0 auto;
+	height: 750px;
+	width: 750px;
+	margin: 0;
 }
 
 .cell {
-	width: 140px;
-	height: 140px;
-	border: 2px dashed lightskyblue;
+	width: 250px;
+	height: 250px;
+	border: 5px solid black;
 	box-sizing: border-box;
 	-webkit-box-sizing: border-box;
 	-moz-box-sizing: border-box;
 	cursor:pointer;
 	float:left;
-	line-height: 140px;
+	line-height: 240px;
 	text-align: center;
-	font-family: "Arial Narrow";
+	font-family: "Arial";
 	font-weight: bold;
-	font-size: 70px;
+	font-size: 180px;
 }
 
 .control {
-	font-family: "Arial Narrow";
+	width: 750px;
+	height: 500px;
+	padding-top: 250px;
+	position: absolute;
+	top: 0;
+	left: auto;
+	right: auto;
+	z-index: 10;
+	font-family: "Arial";
 	font-size: 40px;
 	font-weight: bold;
 	text-align: center;
-	margin-top:40px;
+	color: white;
+	background: rgba(0,0,0, 0.80);
+	display: none;
 }
 
-.players {}
+.control i {
+	cursor: pointer;
+}
+
+#start {
+	display: block;
+}
+
+#start .button {
+	background: gray;
+	font-size: 25px;
+	width: 25%;
+	margin: 20px auto;
+	padding: 10px;
+	border-radius: 10px;
+	cursor: pointer;
+}
+
+#start .button:hover {
+	background: white;
+	color: black;
+}
+
+#win p {
+	color: green;
+	font-size: 60px;
+}
+
+#draw p {
+	color: #00befc;
+	font-size: 60px;
+}
 
 .player {
 	width: 50%;
@@ -44,81 +90,6 @@
 .player label {
 	font-size: 18px;
 	font-weight: normal;
-}
-
-.player-types {
-	
-}
-
-.player-turn {
-	font-size: 18px;
-	color: green;
-	display: none;
-}
-
-.level {
-	margin: 0 15px;
-	color: lightskyblue;
-	cursor: pointer;
-}
-
-.not-selected {
-	opacity: 0.5;
-}
-
-.not-selected:hover {
-	opacity:1;
-}
-
-#start {
-	margin-top: -95px;
-	margin-left: 45%;
-	width: 100px;
-	height: 100px;
-	border-radius: 50%;
-	font-size: 50px;
-	line-height: 100px;
-	text-align: center;
-	background: #87cefa;
-	color: #fff;
-	float: left;
-	cursor: pointer;
-	z-index: 10;
-	position: relative;
-}
-
-/*#start {
-	margin-top: -95px;
-	width: 100px;
-	height: 100px;
-	background-color: #87CEFA;
-	line-height: 100px;
-	text-align: center;
-	border-radius: 50px;
-	-webkit-border-radius:50px;
-	-moz-border-radius:50px;
-	color: white;
-	margin-left: auto;
-	margin-right: auto;
-	cursor:pointer;
-	opacity:0.5;
-}*/
-
-.start:hover {
-	opacity:1;
-}
-
-.ingame {
-	display:none;
-	color:lightskyblue;
-}
-
-.ingame > p {
-	margin:0px;
-}
-
-.robot {
-	opacity:0.5;
 }
 
 .clearfix:after {

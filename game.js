@@ -21,7 +21,7 @@
 			full = self.state.isFull();
 				
 			if ( winner ) {
-				console.log(winner.name + ' won!');
+				console.log('Player ' + winner.id + ' won!');
 				UI.switchView('won', winner);
 			} else if ( full ) {
 				console.log('Its a draw!');
@@ -47,13 +47,42 @@
 		
 		self.start = function() {
 			console.log('starting game!');
+			// let's find out which player is an AI
+			var p1, p2;
+			$dd.dom('input[name="p2-type"]').each(function(p) {
+				if ( p[0].checked ) {
+					p2 = p[0].value;
+				}
+			});
+			$dd.dom('input[name="p1-type"]').each(function(p) {
+				if ( p[0].checked ) {
+					p1 = p[0].value;
+				}
+			});
+			
+			if ( p1 === 'ai' ) {
+				self.p1 = AiPlayer();
+			} else {
+				self.p1 = Player();
+			}
+			if ( p2 === 'ai' ) {
+				self.p2 = AiPlayer();
+			} else {
+				self.p2 = Player();
+			}
 			
 			// make sure we're clean
 			UI.resetBoard();
 			self.state = GameState();
 			
-			// notify player 1
-			self.p1.notify();
+			/*  If this is AI vs AI we need to give Player 1
+				a starting position. Let's randomize it too. */
+			if ( self.p1.kind === 'ai' ) {
+				self.p1.doMove( Math.floor( Math.random() * 8 ) );
+			} else {
+				// notify player 1
+				self.p1.notify();
+			}
 		};
 		
 		self.registerClick = function(index) {
@@ -392,25 +421,14 @@
 	 *	Providing a UI service to the game
 	 */
 	var UI = {
-		show_controls: true,
-		current_view: 'start',
-		
 		switchView: function(view, object) {
 			console.log('switchView', view, object);
 			
-			// fade out current view
-			//console.log('curr view', UI.current_view);
-			//$dd.dom('#' + UI.current_view).css({ display: 'none' });
-			$dd.dom('#start').css({ display: 'none' });
-			$dd.dom('.player-types').each(function(obj) {
+			// hide all current views
+			$dd.dom('.control').each(function(obj) {
+				console.log('hiding control divs');
 				obj.css({ display: 'none' });
 			});
-			$dd.dom('.player-turn').each(function(obj) {
-				obj.css({ display: 'none' });
-			});
-			
-			// set current view to new view
-			UI.current_view = view;
 			
 			switch(view) {
 				case 'start':
@@ -418,24 +436,25 @@
 					break;
 					
 				case 'won':
-					$dd.dom('.p' + object.id + ' .player-turn').html('Winner!').css({ display: 'block' });
-					$dd.dom('#start').css({ display: 'block' });
+					$dd.dom('#win p').html('Player ' + object.id + ' wins!');
+					$dd.dom('#win').css({ display: 'block' });
 					break;
 					
 				case 'draw':
-					$dd.dom('.player-turn').each(function(obj) {
-						obj.html('Draw!').css({ display: 'block' });
-					});
+					$dd.dom('#draw').css({ display: 'block' });
 					break;
 					
 				case 'turn':
-					var turn = $dd.dom('.p' + object.id + ' .player-turn');
+					var turn = $dd.dom('#p' + object.id + '-turn');
+					turn.css({ display: 'block' });
 					if ( object.kind === 'human' ) {
-						turn.html('It\'s your turn!');
+						turn.html('Player ' + object.id + ' turn!');
+						setTimeout(function() {
+							turn.css({ display: 'none' });
+						}, 2000);
 					} else {
 						turn.html('A.I. is thinking...');
 					}
-					turn.css({ display: 'block' });
 					break;
 			}
 		},
@@ -444,15 +463,12 @@
 			var cell = $dd.dom('.cell').get(index);
 			
 			cell.html(symbol);
-			cell.css({
-				color : symbol === 'X' ? 'green' : 'red'
-			});
 			cell.addClass('occupied');
 		},
 		
 		resetBoard: function() {
 			$dd.dom('.cell').each(function(cell) {
-				cell.html('').removeClass('occupied');
+				cell.html('');
 			});
 		}
 	};
@@ -472,45 +488,20 @@
 		});
 		
 		// Listen for game start click
-		$dd.dom('#start').on('click', function(evt) {
-			// let's find out which player is an AI
-			var p1, p2;
-			$dd.dom('input[name="p2-type"]').each(function(p) {
-				if ( p[0].checked ) {
-					p2 = p[0].value;
-				}
-			});
-			$dd.dom('input[name="p1-type"]').each(function(p) {
-				if ( p[0].checked ) {
-					p1 = p[0].value;
-				}
-			});
-			
-			console.log(p1, p2);
-			
-			if ( p1 === 'ai' ) {
-				game.p1 = AiPlayer();
-			} else {
-				game.p1 = Player();
-			}
-			if ( p2 === 'ai' ) {
-				game.p2 = AiPlayer();
-			} else {
-				game.p2 = Player();
-			}
-			
-			/*  If this is AI vs AI we need to give Player 1
-				a starting position. Let's randomize it too. */
-			if ( game.p1.kind === 'ai' ) {
-				game.start( Math.floor( Math.random() * 8 ) );
-			} else {
-				game.start();
-			}
+		$dd.dom('#start .button').on('click', function(evt) {
+			game.start();
 		});
 		
 		$dd.dom('.cell').each(function(cell) {
 			cell.on('click', function(evt) {
 				game.registerClick( cell[0].attributes['board-index'].value );
+			});
+		});
+		
+		$dd.dom('.fa-refresh').each(function(icon) {
+			icon.on('click', function(evt) {
+				UI.resetBoard();
+				UI.switchView('start', {});
 			});
 		});
 	});
