@@ -20,7 +20,11 @@
 				full = self.state.isFull();
 				
 			if ( winner ) {
-				UI.switchView('won', winner);
+				if ( winner.kind === 'ai' ) {
+					UI.switchView('lose', {});
+				} else {
+					UI.switchView('won', winner);
+				}
 			} else if ( full ) {
 				UI.switchView('draw');
 			} else {
@@ -419,6 +423,9 @@
 					$dd.dom('#draw').css({ display: 'block' });
 					break;
 					
+				case 'lose':
+					$dd.dom('#lose').css({ display: 'block' });
+					
 				case 'turn':
 					var turn = $dd.dom('#p' + object.id + '-turn');
 					turn.css({ display: 'block' });
@@ -471,7 +478,7 @@
 			});
 		});
 		
-		$dd.dom('.fa-refresh').each(function(icon) {
+		$dd.dom('.refresh').each(function(icon) {
 			icon.on('click', function(evt) {
 				UI.resetBoard();
 				UI.switchView('start', {});

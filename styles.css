@@ -7,6 +7,7 @@ body {
 	height: 100%;
 	width: 750px;
 	margin: 0 auto;
+	background: url(images/grid.png);
 }
 
 .board {
@@ -18,10 +19,7 @@ body {
 .cell {
 	width: 250px;
 	height: 250px;
-	border: 5px solid black;
 	box-sizing: border-box;
-	-webkit-box-sizing: border-box;
-	-moz-box-sizing: border-box;
 	cursor:pointer;
 	float:left;
 	line-height: 240px;
@@ -53,6 +51,14 @@ body {
 	cursor: pointer;
 }
 
+.refresh {
+	width: 94px;
+	height: 82px;
+	background: url(images/reset.png);
+	margin: 280px 0 0 330px;
+	cursor: pointer;
+}
+
 #start {
 	display: block;
 }
@@ -77,9 +83,17 @@ body {
 	font-size: 60px;
 }
 
+#draw {
+	background: url(images/view-draw.png);
+}
+
 #draw p {
 	color: #00befc;
 	font-size: 60px;
+}
+
+#lose {
+	background: url(images/view-lose.png);
 }
 
 .player {
